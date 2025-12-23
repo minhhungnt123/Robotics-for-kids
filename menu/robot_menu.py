@@ -13,7 +13,8 @@ class RobotSelectMenu:
         self.w, self.h = screen.get_size()
 
         self.cards = []
-        self.selected_robot = None   # ⭐ THÊM BIẾN NÀY
+        self.selected_robot = None
+        self.fade_alpha = 0   # fade nền khi chọn
 
         robots = ["robot_1", "robot_2", "robot_3"]
         spacing = 280
@@ -38,10 +39,15 @@ class RobotSelectMenu:
 
     # ---------------------------------
     def handle_event(self, event):
+        # ❗ Đã chọn rồi thì không cho click nữa
+        if self.selected_robot:
+            return None
+
         for card in self.cards:
             result = card.handle_event(event)
             if result:
-                self.selected_robot = result   # ⭐ LƯU LẠI
+                self.selected_robot = result
+                return result
         return None
 
     # ---------------------------------
@@ -49,20 +55,26 @@ class RobotSelectMenu:
         for card in self.cards:
             card.update()
 
+        # Fade nền khi đã chọn
+        if self.selected_robot:
+            self.fade_alpha = min(180, self.fade_alpha + 8)
+
     # ---------------------------------
     def draw(self):
-        self.screen.fill((40, 50, 70))
+        # ❗ KHÔNG fill nền → để table_background vẽ bên dưới
         for card in self.cards:
-            card.draw(self.screen)
+            card.draw(
+                self.screen,
+                dim=(self.selected_robot and not card.selected)
+            )
+
+        # overlay fade
+        if self.fade_alpha > 0:
+            overlay = pygame.Surface(self.screen.get_size())
+            overlay.set_alpha(self.fade_alpha)
+            overlay.fill((0, 0, 0))
+            self.screen.blit(overlay, (0, 0))
 
     # ---------------------------------
     def get_selected_robot(self):
-        """Được main.py gọi để lấy robot đã chọn"""
         return self.selected_robot
-    
-    # ---------------------------------
-    def get_clicked_card(self):
-        for card in self.cards:
-            if card.clicked:
-                return card
-        return None

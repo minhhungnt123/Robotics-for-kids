@@ -1,15 +1,45 @@
 import os
 import pygame
+import math
 from config import *
 
 class TableBackground:
     def __init__(self):
-        self.image = pygame.transform.smoothscale(
-            pygame.image.load(
-                os.path.join("Images", "Backgrounds", "table_background.png")
-            ).convert(),
-            (SCREEN_WIDTH, SCREEN_HEIGHT)
-        )
+        # Load ảnh (phóng to hơn màn hình để còn dịch)
+        try:
+            self.image = pygame.transform.smoothscale(
+                pygame.image.load(
+                    os.path.join("Images", "Backgrounds", "table_background.png")
+                ).convert(),
+                (SCREEN_WIDTH + 40, SCREEN_HEIGHT + 40)
+            )
+        except Exception as e:
+            print("⚠ Background load error:", e)
+            self.image = pygame.Surface((SCREEN_WIDTH + 40, SCREEN_HEIGHT + 40))
+            self.image.fill((200, 200, 200))
+
+        # Thời gian cho parallax
+        self.time = 0.0
+
+        # Độ mạnh (NHẸ!)
+        self.amp_x = 5   # px (2–4 là đẹp)
+        self.amp_y = 2
+
+        # Tốc độ
+        self.speed_x = 0.6
+        self.speed_y = 0.4
+
+    def update(self):
+        # Tăng thời gian
+        self.time += 0.1
+
+        # Tính offset bằng sin / cos
+        self.offset_x = math.sin(self.time * self.speed_x) * self.amp_x
+        self.offset_y = math.cos(self.time * self.speed_y) * self.amp_y
 
     def draw(self, screen):
-        screen.blit(self.image, (0, 0))
+        # Vẽ background với offset
+        screen.blit(
+            self.image,
+            (-20 + self.offset_x, -20 + self.offset_y)
+        )

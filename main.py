@@ -53,6 +53,7 @@ while running:
 
     # ================= DRAW BACKGROUND =================
     if state in (STATE_MAIN_MENU, STATE_ROBOT_MENU):
+        table_bg.update()
         table_bg.draw(screen)
 
     elif state == STATE_DESIGN_PLAN:
@@ -81,7 +82,12 @@ while running:
         design_plan.draw(screen)
 
         if design_plan.done:
-            gameplay = Gameplay(screen, selected_robot)
+            design_plan.lock()                 
+            gameplay = Gameplay(
+                screen,
+                selected_robot,
+                design_plan             
+            )
             state = STATE_GAME
 
     elif state == STATE_GAME:
