@@ -1,48 +1,53 @@
 import pygame
-import math
 import os
 from config import *
+from config import PROJECT_ROOT
 
 class AssembleZone:
     def __init__(self):
-        self.rect = pygame.Rect(0, 0, 400, 400) # Kích thước vùng hiển thị
+        self.rect = pygame.Rect(0, 0, 260, 260)
         self.rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
-        
+
         self.image = None
         self.current_state = None
-        
-        # Biến đếm thời gian rung lắc
-        self.teeter_timer = 0
+        self.robot_id = None
+        self.teeter_time = 0
 
     def set_state(self, new_state, robot_id):
         self.current_state = new_state
-        # Đường dẫn ảnh: Images/Robot_1/head_body.png ...
-        path = os.path.join(PROJECT_ROOT, "Images", robot_id, f"{new_state}.png")
-        
-        if os.path.exists(path):
-            img = pygame.image.load(path).convert_alpha()
-            # Scale ảnh vừa khung
-            self.image = pygame.transform.smoothscale(img, (self.rect.width, self.rect.height))
+        self.robot_id = robot_id
+
+        img_path = os.path.join(
+            PROJECT_ROOT,
+            "Images",
+            robot_id,
+            f"{new_state}.png"
+        )
+
+        if os.path.exists(img_path):
+            img = pygame.image.load(img_path).convert_alpha()
+            self.image = pygame.transform.smoothscale(
+                img,
+                (self.rect.width, self.rect.height)
+            )
         else:
-            print(f"Missing image: {path}")
+            print("❌ Missing assemble image:", img_path)
+            self.image = None
 
     def wrong_animation(self):
-        self.teeter_timer = 30 # Rung trong 30 frames (khoảng 0.5 giây)
+        self.teeter_time = 25
 
-    def draw(self, surface):
-        draw_x = self.rect.x
-        draw_y = self.rect.y
+    def draw(self, screen):
+        offset = 0
+        if self.teeter_time > 0:
+            offset = (-1) ** self.teeter_time * 6
+            self.teeter_time -= 1
 
-        # --- LOGIC RUNG LẮC (TEETER) ---
-        if self.teeter_timer > 0:
-            # Tạo độ lệch x ngẫu nhiên hoặc theo hàm sin
-            offset = math.sin(self.teeter_timer * 0.5) * 10 # Rung biên độ 10 pixel
-            draw_x += offset
-            self.teeter_timer -= 1
+        r = self.rect.copy()
+        r.x += offset
 
-        # Vẽ ảnh
         if self.image:
-            surface.blit(self.image, (draw_x, draw_y))
+            screen.blit(self.image, r)
         else:
-            # Placeholder nếu chưa có ảnh
-            pygame.draw.rect(surface, (0, 255, 0), (draw_x, draw_y, self.rect.width, self.rect.height), 2)
+            pygame.draw.rect(screen, (180, 180, 255), r, border_radius=12)
+            pygame.draw.rect(screen, (120, 120, 200), r, 3, border_radius=12)

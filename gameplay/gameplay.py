@@ -1,161 +1,121 @@
 import pygame
 import json
-import os
-from config import *
-
 from gameplay.drag_item import DragItem
 from gameplay.assemble_zone import AssembleZone
-from gameplay.camera import CameraZoom
 from quiz.quiz import QuizManager
-
-# Import Class Robot1
-from robots.robot_1 import Robot1
+from config import *
 
 class Gameplay:
     def __init__(self, screen, robot_id, blueprint_bg):
         self.screen = screen
         self.robot_id = robot_id
         self.blueprint_bg = blueprint_bg
+        self.robot_folder = robot_id
+        self.robot_key = robot_id.lower()
 
-        # ===== LOAD ROBOT DATA =====
-        # Chọn class robot dựa trên ID (sau này có Robot2 thì thêm vào dict này)
-        ROBOT_MAP = {
-            "Robot_1": Robot1
-        }
-        
-        # Lấy class config tương ứng, nếu không thấy thì mặc định Robot1
-        RobotClass = ROBOT_MAP.get(robot_id, Robot1)
-        self.robot_config = RobotClass() # Khởi tạo
-
-        # ===== CAMERA =====
-        self.camera = CameraZoom()
-
-        # ===== ASSEMBLE ZONE (Vùng lắp ráp) =====
         self.zone = AssembleZone()
-        # Set trạng thái ban đầu từ config (ví dụ: "body")
-        self.zone.set_state(self.robot_config.INITIAL_STATE, robot_id)
+        self.zone.set_state("body", robot_id)   # ⭐ BODY BAN ĐẦU
 
-        # ===== DRAG PARTS (Các bộ phận rời) =====
-        self.parts = []
-        # Tạo danh sách part từ config PARTS_LIST
-        for p in self.robot_config.PARTS_LIST:
-            # p["name"] là 'head', p["pos"] là (300, 600)...
-            item = DragItem(p["name"], p["pos"], robot_id)
-            self.parts.append(item)
+        self.parts = [
+            DragItem("head",  (300, 520), self.robot_folder),
+            DragItem("track", (450, 520), self.robot_folder),
+            DragItem("arm",   (600, 520), self.robot_folder),
+            DragItem("power", (750, 520), self.robot_folder),
+        ]
 
-        # ===== HÌNH MẪU (FULL BODY) =====
-        self.full_body_img = None
-        full_body_path = os.path.join(PROJECT_ROOT, "Images", robot_id, self.robot_config.FULL_BODY_IMAGE)
-        if os.path.exists(full_body_path):
-            img = pygame.image.load(full_body_path).convert_alpha()
-            self.full_body_img = pygame.transform.smoothscale(img, (150, 150))
+        # --- LOGIC LẮP RÁP MỚI ---
+        # Định nghĩa: (Trạng thái hiện tại, Bộ phận thêm vào) -> Trạng thái mới
+        self.assembly_logic = {
+            ("body", "head"): "head_body",
+            ("head_body", "track"): "head_body_track",
+            ("head_body_track", "arm"): "head_body_track_arm",
+            ("head_body_track", "power"): "head_body_track_power",
+            # Hai trường hợp cuối để hoàn thành robot
+            ("head_body_track_arm", "power"): "robot_1_full_body",
+            ("head_body_track_power", "arm"): "robot_1_full_body"
+        }
 
-        # ===== QUIZ =====
         self.quiz = QuizManager(SCREEN_WIDTH, SCREEN_HEIGHT)
-        
-        # Load câu hỏi
-        quiz_path = os.path.join(PROJECT_ROOT, "quiz", "questions.json")
-        with open(quiz_path, encoding="utf-8") as f:
-            data = json.load(f)
-            self.questions = data.get(robot_id, [])
+
+        with open("quiz/questions.json", encoding="utf-8") as f:
+            raw_data = json.load(f)[self.robot_key]
+            
+        # Chuyển đổi key 'answer' -> 'correct_index' để khớp với QuizManager
+        self.questions = []
+        for q in raw_data:
+            # Tạo dictionary mới đúng chuẩn
+            formatted_q = {
+                "question": q["question"],
+                "options": q["options"],
+                "correct_index": q["answer"]  # Đổi tên key ở đây
+            }
+            self.questions.append(formatted_q)
+        # --------------------
 
         self.pending_part = None
 
-    # ==================================================
+    # -----------------------------------------
     def handle_event(self, event):
+        # Quiz đang mở → chỉ quiz nhận input
         if self.quiz.is_active:
-            self.quiz.handle_event(event)
+            self.quiz.handle_input(event)
             return
 
         for part in self.parts:
             part.handle_event(event)
 
-        # Xử lý khi thả chuột (Mouse Up)
         if event.type == pygame.MOUSEBUTTONUP:
             for part in self.parts:
-                # Nếu part được thả vào vùng Zone
                 if part.rect.colliderect(self.zone.rect):
                     self.pending_part = part
-                    
-                    # Lấy câu hỏi tiếp theo
+                    # Lấy câu hỏi tiếp theo (nếu còn)
                     if self.questions:
                         question = self.questions.pop(0)
-                        # Trả part bộ phận về chỗ cũ trước khi hiện quiz để không bị che
-                        part.reset()
                         self.quiz.start_quiz(question)
                     else:
                         print("Hết câu hỏi!")
+                        # Có thể xử lý logic khi hết câu hỏi ở đây nếu cần
                     break
 
-    # ==================================================
+    # -----------------------------------------
     def update(self):
-        self.camera.update()
-        if not self.blueprint_bg.done:
-            self.blueprint_bg.update()
-
-        # Update Quiz và nhận kết quả
         result = self.quiz.update()
-        
-        # Nếu có kết quả trả về (True/False) và đang có bộ phận chờ lắp
         if result is not None and self.pending_part:
-            if result == True:
-                # === TRẢ LỜI ĐÚNG ===
-                print("Đúng! Đang kiểm tra logic lắp ráp...")
-                
-                # 1. Lấy trạng thái hiện tại (vd: "body")
+            if result:
+                # --- SỬA LOGIC CẬP NHẬT TRẠNG THÁI ---
                 current_state = self.zone.current_state
-                # 2. Lấy tên bộ phận đang lắp (vd: "head")
                 part_name = self.pending_part.name
                 
-                # 3. Tra bảng logic trong robot_1.py
-                # logic_map = {"head": "head_body", ...}
-                logic_map = self.robot_config.ASSEMBLY_LOGIC.get(current_state, {})
+                # Tìm trạng thái tiếp theo trong từ điển quy tắc
+                next_state = self.assembly_logic.get((current_state, part_name))
                 
-                if part_name in logic_map:
-                    # Hợp lệ -> Lấy trạng thái mới (vd: "head_body")
-                    new_state = logic_map[part_name]
-                    self.zone.set_state(new_state, self.robot_id)
-                    
-                    # Xóa bộ phận đó khỏi danh sách (vì đã lắp rồi)
-                    if self.pending_part in self.parts:
-                        self.parts.remove(self.pending_part)
+                if next_state:
+                    self.zone.set_state(next_state, self.robot_id)
+                    self.parts.remove(self.pending_part)
                 else:
-                    # Trả lời đúng nhưng lắp sai thứ tự (vd: chưa có tay mà lắp súng)
-                    print("Lắp sai thứ tự!")
+                    # Nếu lắp sai thứ tự (VD: chưa có đầu mà đã lắp tay)
+                    print(f"⚠️ Lắp sai thứ tự! Không thể gắn '{part_name}' vào '{current_state}'")
+                    self.pending_part.reset()
                     self.zone.wrong_animation()
-                    
+                # -------------------------------------
             else:
-                # === TRẢ LỜI SAI ===
-                print("Sai rồi!")
+                # Trả lời sai -> Reset vị trí mảnh ghép
+                self.pending_part.reset()
                 self.zone.wrong_animation()
 
-            # Reset biến chờ
             self.pending_part = None
 
-    # ==================================================
-    def draw_game_objects(self, surface):
-        # 1. Vẽ nền
-        self.blueprint_bg.draw(surface)
-
-        # 2. Vẽ Robot đang lắp (Zone)
-        self.zone.draw(surface)
-
-        # 3. Vẽ các bộ phận rời
-        for part in self.parts:
-            part.draw(surface)
-            
-        # 4. Vẽ hình mẫu (Góc trái trên)
-        if self.full_body_img:
-            # Vẽ khung trắng bao quanh
-            pygame.draw.rect(surface, (255, 255, 255), (15, 15, 160, 160), 3, border_radius=10)
-            surface.blit(self.full_body_img, (20, 20))
-
-        # 5. Vẽ Quiz (Trên cùng)
-        self.quiz.draw(surface)
-
-    # ==================================================
+    # -----------------------------------------
     def draw(self):
-        temp = pygame.Surface(self.screen.get_size())
-        self.draw_game_objects(temp)
-        zoomed = self.camera.apply(temp)
-        self.screen.blit(zoomed, (0, 0))
+        # 1. Blueprint nền
+        self.blueprint_bg.draw(self.screen)
+
+        # 2. Robot lắp ráp
+        self.zone.draw(self.screen)
+
+        # 3. Parts
+        for part in self.parts:
+            part.draw(self.screen)
+
+        # 4. Quiz
+        self.quiz.draw(self.screen)

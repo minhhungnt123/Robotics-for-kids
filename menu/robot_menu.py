@@ -16,7 +16,7 @@ class RobotSelectMenu:
         self.selected_robot = None
         self.fade_alpha = 0   # fade nền khi chọn
 
-        robots = ["robot_1", "robot_2", "robot_3"]
+        robots = ["Robot_1", "Robot_2", "Robot_3"]
         spacing = 280
         start_x = self.w // 2 - spacing
         y = self.h // 2

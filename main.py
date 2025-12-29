@@ -78,17 +78,14 @@ while running:
             state = STATE_DESIGN_PLAN
 
     elif state == STATE_DESIGN_PLAN:
+        table_bg.draw(screen)
         design_plan.update()
         design_plan.draw(screen)
 
         if design_plan.done:
-            design_plan.lock()                 
-            gameplay = Gameplay(
-                screen,
-                selected_robot,
-                design_plan             
-            )
+            gameplay = Gameplay(screen, selected_robot, design_plan)
             state = STATE_GAME
+
 
     elif state == STATE_GAME:
         gameplay.update()
