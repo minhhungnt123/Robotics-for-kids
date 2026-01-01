@@ -50,20 +50,15 @@ class RobotSelectMenu:
         home_path = os.path.join(PROJECT_ROOT, "Images", "Menu", "home.png")
         if os.path.exists(home_path):
             img = pygame.image.load(home_path).convert_alpha()
-            self.home_btn_img = pygame.transform.smoothscale(img, (60, 60))
+            self.home_btn_img = pygame.transform.smoothscale(img, (150, 100))
         else:
-            self.home_btn_img = pygame.Surface((60, 60)); self.home_btn_img.fill((200, 50, 50))
+            self.home_btn_img = pygame.Surface((150, 100)); self.home_btn_img.fill((200, 50, 50))
         self.home_btn_rect = self.home_btn_img.get_rect(topleft=(30, 30))
 
         try:
             self.label_font = pygame.font.Font(os.path.join(PROJECT_ROOT, "Fonts", "Montserrat-Bold.ttf"), 24)
         except:
             self.label_font = pygame.font.SysFont("Arial", 24, bold=True)
-
-        # Cấu hình đường dẫn file Idle chính xác theo assets bạn đã upload
-        # Robot 1: Scout_idle.png
-        # Robot 2: robot_2_idle.png
-        # Robot 3: robot_3_Idle.png
         self.levels = [
             {
                 "id": "robot_1",
@@ -105,9 +100,9 @@ class RobotSelectMenu:
             lvl_path = os.path.join(PROJECT_ROOT, "Images", "Menu", item["level_img"])
             if os.path.exists(lvl_path):
                 l_img = pygame.image.load(lvl_path).convert_alpha()
-                item["lvl_surf"] = pygame.transform.smoothscale(l_img, (90, 90))
+                item["lvl_surf"] = pygame.transform.smoothscale(l_img, (150, 90))
             else:
-                item["lvl_surf"] = pygame.Surface((90, 90)); item["lvl_surf"].fill((255, 215, 0))
+                item["lvl_surf"] = pygame.Surface((150, 90)); item["lvl_surf"].fill((255, 215, 0))
 
             # 2. ⭐ TẠO ANIMATION IDLE ⭐
             idle_path = os.path.join(PROJECT_ROOT, "Images", item["folder"], item["idle_file"])
