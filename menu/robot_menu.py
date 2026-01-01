@@ -2,150 +2,171 @@ import pygame
 import os
 from config import *
 
+# --- CLASS HỖ TRỢ ANIMATION ---
+class SpriteAnimation:
+    # ⭐ Thêm tham số n_frames vào đây
+    def __init__(self, image_path, scale_size, n_frames=1):
+        self.frames = []
+        self.current_frame = 0
+        self.last_update = 0
+        self.cooldown = 100 
+
+        if os.path.exists(image_path):
+            sprite_sheet = pygame.image.load(image_path).convert_alpha()
+            sheet_w, sheet_h = sprite_sheet.get_size()
+            
+            # ⭐ TÍNH TOÁN CHIỀU RỘNG DỰA TRÊN SỐ FRAME BẠN CUNG CẤP
+            if n_frames > 0:
+                frame_width = sheet_w // n_frames
+                
+                for i in range(n_frames):
+                    # Cắt đúng vị trí
+                    frame = sprite_sheet.subsurface((i * frame_width, 0, frame_width, sheet_h))
+                    scaled = pygame.transform.smoothscale(frame, scale_size)
+                    self.frames.append(scaled)
+        
+        if not self.frames:
+            s = pygame.Surface(scale_size); s.fill((100, 100, 100))
+            self.frames.append(s)
+
+    def update(self):
+        now = pygame.time.get_ticks()
+        if now - self.last_update > self.cooldown:
+            self.last_update = now
+            self.current_frame = (self.current_frame + 1) % len(self.frames)
+
+    def get_image(self):
+        return self.frames[self.current_frame]
+
+# --- MENU CHÍNH ---
 class RobotSelectMenu:
     def __init__(self, screen):
         self.screen = screen
         self.selected_robot = None
         
-        # --- 1. NÚT BACK (ICON HOME) ---
+        # Nút Back
         self.home_btn_img = None
         self.home_btn_rect = None
-        
         home_path = os.path.join(PROJECT_ROOT, "Images", "Menu", "home.png")
         if os.path.exists(home_path):
             img = pygame.image.load(home_path).convert_alpha()
-            self.home_btn_img = pygame.transform.smoothscale(img, (140, 70)) # Resize icon nhỏ lại
-            self.home_btn_rect = self.home_btn_img.get_rect(topleft=(140, 70))
+            self.home_btn_img = pygame.transform.smoothscale(img, (60, 60))
         else:
-            # Fallback nếu thiếu ảnh
-            self.home_btn_img = pygame.Surface((140, 70))
-            self.home_btn_img.fill((200, 50, 50))
-            self.home_btn_rect = self.home_btn_img.get_rect(topleft=(140, 70))
+            self.home_btn_img = pygame.Surface((60, 60)); self.home_btn_img.fill((200, 50, 50))
+        self.home_btn_rect = self.home_btn_img.get_rect(topleft=(30, 30))
 
-        # --- 2. CẤU HÌNH FONT ---
         try:
-            self.label_font = pygame.font.Font(os.path.join(PROJECT_ROOT, "Fonts", "Montserrat-Bold.ttf"), 28)
+            self.label_font = pygame.font.Font(os.path.join(PROJECT_ROOT, "Fonts", "Montserrat-Bold.ttf"), 24)
         except:
-            self.label_font = pygame.font.SysFont("Arial", 28, bold=True)
+            self.label_font = pygame.font.SysFont("Arial", 24, bold=True)
 
-        # --- 3. DATA LEVELS ---
-        # Lưu ý: Robot 2 và 3 đang dùng tạm ảnh Robot 1 vì bạn chưa upload ảnh full_body của chúng
+        # Cấu hình đường dẫn file Idle chính xác theo assets bạn đã upload
+        # Robot 1: Scout_idle.png
+        # Robot 2: robot_2_idle.png
+        # Robot 3: robot_3_Idle.png
         self.levels = [
             {
-                "id": "robot_1", 
-                "level_img": "level1.png", 
-                "robot_img": "robot_1_full_body.png", 
+                "id": "robot_1",
+                "level_img": "level1.png",
+                "idle_file": "robot_1_idle.png", # File trong Images/Robot_1
+                "folder": "Robot_1",
+                "label": "SCOUT",
+                "frames": 12
             },
             {
-                "id": "robot_2", 
-                "level_img": "level2.png", 
-                "robot_img": "robot_2_full_body.png", 
+                "id": "robot_2",
+                "level_img": "level2.png",
+                "idle_file": "robot_2_idle.png", # File trong Images/Robot_2
+                "folder": "Robot_2",
+                "label": "WELDER",
+                "frames": 9
             },
             {
-                "id": "robot_3", 
-                "level_img": "level3.png", 
-                "robot_img": "robot_3_full_body.png", 
+                "id": "robot_3",
+                "level_img": "level3.png",
+                "idle_file": "robot_3_Idle.png", # File trong Images/Robot_3
+                "folder": "Robot_3",
+                "label": "PANACER",
+                "frames": 6
             },
         ]
 
-        # Kích thước thẻ bài
         self.card_w, self.card_h = 240, 320
         gap = 50
-        
-        # Tính vị trí để căn giữa 3 thẻ
         total_w = (self.card_w * 3) + (gap * 2)
         start_x = (SCREEN_WIDTH - total_w) // 2
         start_y = (SCREEN_HEIGHT - self.card_h) // 2 + 40
 
         self.cards = []
 
-        # --- 4. LOAD ẢNH VÀ TẠO RECT ---
+        # KHỞI TẠO CÁC CARD VÀ ANIMATION
         for i, item in enumerate(self.levels):
-            # A. Load ảnh Level (Badge)
+            # 1. Badge Level
             lvl_path = os.path.join(PROJECT_ROOT, "Images", "Menu", item["level_img"])
             if os.path.exists(lvl_path):
                 l_img = pygame.image.load(lvl_path).convert_alpha()
-                item["lvl_surf"] = pygame.transform.smoothscale(l_img, (180, 100)) # Badge kích thước 180x100
+                item["lvl_surf"] = pygame.transform.smoothscale(l_img, (90, 90))
             else:
-                item["lvl_surf"] = pygame.Surface((180, 100))
-                item["lvl_surf"].fill((255, 215, 0))
+                item["lvl_surf"] = pygame.Surface((90, 90)); item["lvl_surf"].fill((255, 215, 0))
 
-            # B. Load ảnh Robot (Preview)
-            # Ưu tiên lấy trong thư mục Menu trước (như file bạn upload)
-            robo_path = os.path.join(PROJECT_ROOT, "Images", "Menu", item["robot_img"])
-            if not os.path.exists(robo_path):
-                robo_path = os.path.join(PROJECT_ROOT, "Images", "Robot_1", "robot_1_full_body.png")
+            # 2. ⭐ TẠO ANIMATION IDLE ⭐
+            idle_path = os.path.join(PROJECT_ROOT, "Images", item["folder"], item["idle_file"])
+            custom_size = item.get("scale", (180, 180))
+            frame_count = item.get("frames", 1) # Lấy số frame từ config
+            
+            # Truyền số frame vào class
+            item["anim"] = SpriteAnimation(idle_path, custom_size, frame_count)
 
-            if os.path.exists(robo_path):
-                r_img = pygame.image.load(robo_path).convert_alpha()
-                # Scale robot sao cho vừa khít chiều ngang thẻ (trừ lề)
-                scale_ratio = 180 / r_img.get_width() 
-                new_h = int(r_img.get_height() * scale_ratio)
-                item["robo_surf"] = pygame.transform.smoothscale(r_img, (180, new_h))
-            else:
-                item["robo_surf"] = pygame.Surface((180, 200))
-                item["robo_surf"].fill((100, 100, 100))
-
-            # C. Tạo Rect cho thẻ
             x = start_x + i * (self.card_w + gap)
             rect = pygame.Rect(x, start_y, self.card_w, self.card_h)
             self.cards.append(rect)
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            mouse_pos = pygame.mouse.get_pos()
+            if self.home_btn_rect.collidepoint(event.pos):
+                return "back"
 
-            # 1. Check nút Home (Back)
-            if self.home_btn_rect.collidepoint(mouse_pos):
-                print("Back to Main Menu")
-                return "back" # Trả về tín hiệu để Main Menu xử lý
-
-            # 2. Check chọn Robot
             for i, card_rect in enumerate(self.cards):
-                if card_rect.collidepoint(mouse_pos):
+                if card_rect.collidepoint(event.pos):
                     self.selected_robot = self.levels[i]["id"]
-                    print(f"Selected: {self.levels[i]['id']}")
+
+    def update(self):
+        # ⭐ Cập nhật frame cho tất cả robot
+        for item in self.levels:
+            item["anim"].update()
 
     def draw(self):
-        # Vẽ nút Back (Home Icon)
         self.screen.blit(self.home_btn_img, self.home_btn_rect)
-        
         mouse_pos = pygame.mouse.get_pos()
 
         for i, card_rect in enumerate(self.cards):
             data = self.levels[i]
-            
-            # --- HIỆU ỨNG HOVER ---
             is_hover = card_rect.collidepoint(mouse_pos)
             
-            # Nếu hover thì thẻ nổi lên một chút (dịch y lên 10px)
             draw_y = card_rect.y - 10 if is_hover else card_rect.y
-            
-            # Màu nền thẻ
             bg_color = (40, 44, 52) if not is_hover else (50, 55, 65)
             border_color = (80, 80, 80) if not is_hover else (100, 200, 255)
             
-            # Rect vẽ thực tế (có tính hover)
             draw_rect = pygame.Rect(card_rect.x, draw_y, card_rect.width, card_rect.height)
 
-            # 1. Vẽ nền thẻ
             pygame.draw.rect(self.screen, bg_color, draw_rect, border_radius=20)
             pygame.draw.rect(self.screen, border_color, draw_rect, width=3, border_radius=20)
 
-            # 2. Vẽ hình Robot (Canh giữa thẻ)
-            r_surf = data["robo_surf"]
+            # ⭐ VẼ ANIMATION FRAME THAY VÌ ẢNH TĨNH ⭐
+            r_surf = data["anim"].get_image()
             r_rect = r_surf.get_rect(center=draw_rect.center)
-            r_rect.y += 20 # Dịch xuống chút để nhường chỗ cho Badge Level
+            r_rect.y += 15
             self.screen.blit(r_surf, r_rect)
 
-            # 3. Vẽ Badge Level (Nổi lên trên mép thẻ)
-            # Vị trí: Giữa chiều ngang, mép trên đè lên đường viền
+            # Label
+            name_surf = self.label_font.render(data["label"], True, (255, 255, 255))
+            name_rect = name_surf.get_rect(center=(draw_rect.centerx, draw_rect.bottom - 30))
+            self.screen.blit(name_surf, name_rect)
+
+            # Badge Level
             l_surf = data["lvl_surf"]
             l_rect = l_surf.get_rect(center=(draw_rect.centerx, draw_rect.top)) 
             self.screen.blit(l_surf, l_rect)
 
     def get_selected_robot(self):
         return self.selected_robot
-    
-    def update(self):
-        pass
