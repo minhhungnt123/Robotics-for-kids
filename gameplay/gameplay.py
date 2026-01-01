@@ -122,14 +122,14 @@ class Gameplay:
         }
         
         RUN_FILES = {
-            "robot_1": {"folder": "Robot_1", "file": "robot_1_run.png", "scale": (500, 500), "frames": 10},
-            "robot_2": {"folder": "Robot_2", "file": "robot_2_run.png", "scale": (480, 520), "frames": 9},
-            "robot_3": {"folder": "Robot_3", "file": "robot_3_run.png", "scale": (400, 400), "frames": 4},
+            "robot_1": {"folder": "Robot_1", "file": "robot_1_run.png", "scale": (300, 300), "frames": 10},
+            "robot_2": {"folder": "Robot_2", "file": "robot_2_run.png", "scale": (280, 320), "frames": 9},
+            "robot_3": {"folder": "Robot_3", "file": "robot_3_run.png", "scale": (200, 200), "frames": 4},
         }
         ROBOT_SCALES = {
-            "robot_1": 2.0,
-            "robot_2": 2.0,
-            "robot_3": 1.0
+            "robot_1": 3.0,
+            "robot_2": 2.5,
+            "robot_3": 2.0
         }
         current_scale = ROBOT_SCALES.get(self.robot_key, 1.0)
         # ==========================================
