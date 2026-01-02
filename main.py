@@ -144,7 +144,9 @@ while running:
     elif state == STATE_DESIGN_PLAN:
         design_plan.update()
         design_plan.draw(screen)
+        
         if design_plan.done:
+            pygame.display.flip() 
             gameplay = Gameplay(screen, selected_robot, design_plan)
             state = STATE_GAME
 
